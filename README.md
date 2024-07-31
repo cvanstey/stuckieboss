@@ -9,3 +9,5 @@ Mi chiamo Cynthia (Cinzia) Anstey. Mi sono laureata in Lettere presso la Stockto
 _My Experience_
 My previous experience as technical support enabled me to work with data. My expertise in Excel includes extracting, transforming, loading different sources of data into relatable tables. However, today I often use R or Python to do the same work. I have also worked in databases, using SQL to query.
 
+La mia precedente esperienza come supporto tecnico mi ha permesso di lavorare con i dati. La mia esperienza in Excel include l'estrazione, la trasformazione e il caricamento di diverse origini dati in tabelle relazionabili. Tuttavia, oggi uso spesso R o Python per fare lo stesso lavoro. Ho anche lavorato nei database, utilizzando SQL per eseguire query.
+
