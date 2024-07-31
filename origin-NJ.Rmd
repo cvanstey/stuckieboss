@@ -1,0 +1,442 @@
+---
+title: "Reading Literature with R"
+author: "Cynthia Anstey"
+date:  "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_notebook
+---
+<h1>Background<h1/>
+
+I used a variety of sources to help me with this project. 
+
+https://bookdown.org/jdholster1/idsr/text-analysis.html
+https://www.rdocumentation.org/packages/gutenbergr/versions/0.2.3
+https://github.com/ropensci/gutenbergr
+https://youtu.be/VlBkxoLbgi4?si=0b92BHbiZAX9kvz1
+https://datavizs21.classes.andrewheiss.com/example/13-example/
+
+
+I noticed there was a library that contained all the Harry Potter volumes in one of the links I referenced. I hoped a library existed for Edgar Allen Poe. After some searching I did find that someone has done a similar project using downloads from the Gutenberg Project. This project uses some of these functions but endeavors to elaborate and analyze the data more extensively. 
+
+https://rpubs.com/abyingt1/887155
+
+
+The rpub project analyzed a small corpus of Poe's work which included only three. My project hope to compare two very different works - one from Poe and the other from Kate Chopin called The Awakening.
+
+#Libraries
+In addition to an array of libraries, I included stop_words into the global environment. 
+
+```{r}
+library(devtools)
+```
+
+
+```{r}
+library(gutenbergr)
+library(ggthemes)
+library(quanteda)
+library(tidyverse)
+library(textdata)
+library(tidyselect)
+library(tidytext)
+library(DT)
+library(flextable)
+library(tm)
+library(qdap)
+library(wordcloud)
+library(wordcloud2)
+data("stop_words")
+```
+##Gutenbergr
+
+
+This library contains a catalog literary works maintained by Project Gutenberg for use. When I have to analyze literature, I try to have a text copy to write all over and a hard copy edition. In this project I implemented R Studio as another path towards close textual analysis. 
+
+
+```{r}
+gutenberg_works()
+```
+I was curious how many authors were contained in the library. I could spend time analyzing its contents. For now, we can move on to reading in some text. 
+
+```{r}
+count(gutenberg_authors)
+```
+Below I filtered by title to find exactly what I wanted to analyze. It was important to confirm the correct version and format. I wanted the English (en) text version. One of the rows is a movie book.  I selected ID 932. 
+```{r}
+#View(gutenberg_metadata)
+gutenberg_metadata %>% 
+  filter(title=="The Fall of the House of Usher")
+```
+I downloaded the file by ID and saved the download as usher_words in the global environment. R reads ID 932 as a tibble with two columns and 789 rows. If were to trust the word count the number of words now, I would be wrong. 
+```{r}
+gutenberg_download(gutenberg_id = 932) # The Fall Of the House of Usher.
+usher_words <- gutenberg_download(932)
+texts<-corpus(usher_words)
+#view(usher_words)
+```
+Using the str function, we can see the structure of what was downloaded. All the text is nested within itself. This is great, but I wanted to see each word as its own structure.
+
+
+```{r}
+getTransformations()
+```
+
+
+```{r}
+str(usher_words)
+```
+Using mutate, each word is given a row number because R unnested those tokens. After I viewed it, I save it as a new dataframe called usher1. It is important to note that R also made the text lowercase and removed any punctuation. 
+
+
+```{r}
+usher1 <- usher_words %>% 
+  mutate(line =row_number()) %>% 
+unnest_tokens(word, text) %>% 
+anti_join(stop_words)
+#view(usher1)
+```
+Calling usher1 and counting the words now shows the number of words has increased to 7208. After I go back and add the stop words, I end up with 1740.
+```{r}
+usher1 %>% 
+  count(word, sort = TRUE)
+```
+I am interested how these words breakdown. Are there any that I could discount from my analysis using the stopwords list. Which words are used in abundance? Which are used sparingly? Which words repeat, not only as the same word, but also as a synonym. How many different words does Poe use to describe the body or illness? What are the unfamiliar words? Below I use R to count the words and sort top 100 used words.
+
+```{r}
+usher1 %>% 
+count(word, sort = TRUE) %>% 
+  filter(n>8) %>% 
+  mutate(word = reorder(word,n)) %>% 
+  ggplot(aes(word,n)) +
+  geom_col(fill="tomato")+
+  xlab(NULL)+
+  coord_flip()+
+  theme_few()
+```
+Hoping to see these words more clearly on a plot, I call freq_terms from the qdap library. To become familiar with the library, I try to plot words that at least eight characters after I found the top four frequent terms.
+
+```{r}
+freq_terms(usher1,25)
+```
+#stopwords
+
+There are three resources R can call to manage stopwords. Often people say that some words are not important which is rather presumptive. Depending on what a person is trying to understand about a text, all words are important until they are not. For instance, in Usher, we have to understand the story is told in the first person. The concept of 'I' is very important to the meaning of the story. Before I apply  stopwords, I retained pronouns such as I and his, but after I applied the stopwords, I had to consider the amount of depth I lose because pronouns and verb tense was exempt from my analysis after running that chunk.
+
+AFINN Finn Arup Nielsen
+bing Bing Lie and collaborators
+nrc Saif Mohammed and Puter Turney
+
+```{r}
+usher1 %>% 
+  anti_join(stop_words) %>% 
+  count(word, sort = TRUE)
+```
+qdap has a fun frequency terms function. Below I found all the words with at least 11 characters (tokens) and plotted the number of times they appeared in the text. 
+
+
+
+```{r}
+freq <- freq_terms(usher1$word,at.least =11, stopwords = stop_words)
+plot(freq)
+```
+
+The following analysis considers the importance of giving value to words. I join usher1 with the afinn lexicon to derive the sentiments of words in the text. I chose the top 30 occurrences.Using the stopwords, my first visualization lists terror as the most frequent word under the umbrella of negative sentiment.
+
+
+```{r}
+usher1 %>% 
+  inner_join(get_sentiments('afinn')) %>% 
+  arrange(desc(value)) -> usher_sentiment
+```
+```{r}
+usher1 %>% 
+   anti_join(stop_words) %>% 
+  inner_join(get_sentiments('afinn')) %>% 
+     filter(value > 0) %>% 
+   count(word,  value,sort = TRUE)  -> usher_negative
+```
+
+```{r}
+usher1 %>% 
+  anti_join(stop_words) %>% 
+  inner_join(get_sentiments("afinn")) %>% 
+  filter(value <= 0) %>% 
+  count(word, value, sort = TRUE)%>% 
+  head(30) %>% 
+  ggplot(aes(reorder(word, n), n, fill = value)) + geom_col() + coord_flip() +
+   scale_fill_gradient(low = "black", high = "orange")+
+  ylab("Number of Occurrences") +
+      xlab("Words") + ggtitle("The Fall of the House of Usher Negative Sentiment using stopwords")
+```
+However, if I disregard the stopwords, the most recurring word is no and by a considerable amount. 
+
+
+```{r}
+usher1 %>% 
+  inner_join(get_sentiments("afinn")) %>% 
+  filter(value <= 0) %>% 
+  count(word, value, sort = TRUE)%>% 
+  head(30) %>% 
+  ggplot(aes(reorder(word, n), n, fill = value)) + geom_col() + coord_flip() +
+  scale_fill_gradient(low = "black", high = "orange")+
+  ylab("Number of Occurrences") +
+      xlab("Words") + ggtitle("The Fall of the House of Usher Negative Sentiment including stop_words")
+```
+Conversely, if we consider the positive words we experience the same conundrum. Implementing stopwords removed words such as certain, good, best, and great.
+
+
+```{r}
+usher1 %>% 
+   anti_join(stop_words) %>% 
+  inner_join(get_sentiments('afinn')) %>% 
+     filter(value > 0) %>% 
+   count(word,  value,sort = TRUE)  -> usher_positive
+```
+```{r}
+usher_positive %>% 
+  head(30) %>% 
+  ggplot(aes(reorder(word, n,),n, fill = value)) + geom_col() + coord_flip() +
+  scale_fill_gradient(low = "gray", high = "orange")+ylab("Number of Occurrences") +
+      xlab("Words") + ggtitle("The Fall of the House of Usher Positive Sentiment")
+```
+
+```{r}
+usher1 %>% 
+  inner_join(get_sentiments('afinn')) %>% 
+     filter(value > 0) %>% 
+   count(word,  value,sort = TRUE)  -> usher_positive
+```
+
+
+```{r}
+usher_positive %>% 
+  head(30) %>% 
+  ggplot(aes(reorder(word, n,),n, fill = value)) + geom_col() + coord_flip() +
+  scale_fill_gradient(low = "gray", high = "orange")+ylab("Number of Occurrences") +
+      xlab("Words") + ggtitle("The Fall of the House of Usher Positive Sentiment")
+```
+#Wordclouds
+
+The wordcloud can be accomplished using a variety of methods. As with all things, intent is useful. Why go through the effort to display every as some sort of design? For some, it might be a useful way to extract metadata from our own work. Perhaps we can refine our work if it seems too off the mark of our intended message. 
+
+the Worldcloud2 lets you hover over the word and see a count. 
+
+```{r}
+wordcloud2(data=usher_negative)
+```
+
+Time to turn my focus to the other text my project, Kate Chopin's the Awakening, this text is categorized on the gutenberg_bookshelf as "Banned Books List from the American Library Association" I tried to find it using the title but was unable to download ID 100.
+
+
+```{r}
+View(gutenberg_metadata)
+gutenberg_metadata %>% 
+  filter(title=="The Awakening")
+```
+I went to the site to see if maybe I was spelling something wrong. 
+I found a version I can download but the story is part of a collection. I need to do a considerable amount of cleaning before I can try to use this text.
+```{r}
+gutenberg_download(gutenberg_id = 160) # The Awakening.
+awakening_words <- gutenberg_download(160, meta_fields = "title")
+view(awakening_words)
+```
+
+
+```{r}
+str(awakening_words)
+```
+
+# function to clean text
+
+
+```{r}
+glimpse(awakening_words)
+```
+
+
+```{r}
+head(awakening_words)
+```
+```{r}
+awakening_clean<-awakening_words %>% 
+  slice(80:n()) %>% 
+  drop_na(text) %>% 
+ unnest_tokens(word,text)
+head(awakening_clean)
+```
+```{r}
+awakening_clean %>% 
+  count(word,sort = TRUE)
+```
+```{r}
+awakening_clean %>% 
+  count(word,sort = TRUE) %>% 
+  filter(n>200) %>% 
+  mutate(word = reorder(word,n)) %>% 
+  ggplot(aes(word,n))+
+  geom_col(fill="springgreen3")+
+  xlab(NULL)+
+  coord_flip()+
+  theme_few()
+```
+
+
+```{r}
+awakening_bigrams <- awakening_words %>% 
+  drop_na(text) %>% 
+  # n = 2 here means bigrams. We could also make trigrams (n = 3) or any type of n-gram
+  unnest_tokens(bigram, text, token = "ngrams", n = 2) %>% 
+  # Get rid of NAs in the new bigram column
+  drop_na(bigram) %>% 
+  # Split the bigrams into two words so we can remove stopwords
+  separate(bigram, c("word1", "word2"), sep = " ") %>% 
+  filter(!word1 %in% stop_words$word,
+         !word2 %in% stop_words$word) %>% 
+  filter(!word1 %in% c("thou", "thy", "thine", "enter", "exeunt", "exit"),
+         !word2 %in% c("thou", "thy", "thine", "enter", "exeunt", "exit")) %>% 
+  # Put the two word columns back together
+  unite(bigram, word1, word2, sep = " ") %>% 
+arrange(bigram)
+awakening_bigrams
+```
+```{r}
+top_bigrams <- awakening_bigrams %>% 
+  # Count all the bigrams in each play
+  count(title, bigram, sort = TRUE) %>% 
+  # Keep top 15 in each play
+  group_by(title) %>% 
+  top_n(15) %>% 
+  ungroup() %>% 
+  # Make the bigrams an ordered factor so they plot in order
+  mutate(bigram = fct_inorder(bigram))
+```
+
+```{r}
+ggplot(top_bigrams, aes(y = fct_rev(bigram), x = n, fill = title)) + 
+  geom_col() + 
+  guides(fill = "none") +
+  labs(y = "Count", x = NULL, 
+       title = "15 most frequent bigrams The Awakening") +
+  facet_wrap(vars(title), scales = "free") +
+  theme_bw()
+```
+```{r}
+log2(8)
+```
+```{r}
+2^3
+```
+
+
+```{r}
+pronouns <- c("he", "she")
+
+bigram_he_she_counts <- awakening_words %>%
+  drop_na(text) %>% 
+  # Split into bigrams
+  unnest_tokens(bigram, text, token = "ngrams", n = 2) %>%
+  # Find counts of bigrams
+  count(bigram, sort = TRUE) %>%
+  # Split the bigram column into two columns
+  separate(bigram, c("word1", "word2"), sep = " ") %>%
+  # Only choose rows where the first word is he or she
+  filter(word1 %in% pronouns) %>%
+  count(word1, word2, wt = n, sort = TRUE) %>% 
+  rename(total = n)
+
+word_ratios <- bigram_he_she_counts %>%
+  # Look at each of the second words
+  group_by(word2) %>%
+  # Only choose rows where the second word appears more than 10 times
+  filter(sum(total) > 10) %>%
+  ungroup() %>%
+  # Spread out the word1 column so that there's a column named "he" and one named "she"
+  spread(word1, total, fill = 0) %>%
+  # Add 1 to each number so that logs work (just in case any are zero)
+  mutate_if(is.numeric, ~(. + 1) / sum(. + 1)) %>%
+  # Create a new column that is the logged ratio of the she counts to he counts
+  mutate(logratio = log2(she / he)) %>%
+  # Sort by that ratio
+  arrange(desc(logratio))
+
+# Rearrange this data so it's plottable
+plot_word_ratios <- word_ratios %>%
+  # This gets the words in the right order---we take the absolute value, select
+  # only rows where the log ratio is bigger than 0, and then take the top 15 words
+  mutate(abslogratio = abs(logratio)) %>%
+  group_by(logratio < 0) %>%
+  top_n(15, abslogratio) %>%
+  ungroup() %>%
+  mutate(word = reorder(word2, logratio)) 
+
+# Finally we plot this
+ggplot(plot_word_ratios, aes(y = word, x = logratio, color = logratio < 0)) +
+  geom_segment(aes(y = word, yend = word,
+                   x = 0, xend = logratio), 
+               size = 1.1, alpha = 0.6) +
+  geom_point(size = 3.5) +
+  labs(x = "How much more/less likely", y = NULL) +
+  scale_color_discrete(name = "", labels = c("More 'she'", "More 'he'")) +
+  scale_x_continuous(breaks = seq(-3, 3),
+                     labels = c("8x", "4x", "2x",
+                                "Same", "2x", "4x", "8x")) +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+
+```{r}
+get_sentiments("afinn")
+```
+```{r}
+awakening_clean <- awakening_words %>% 
+  drop_na() %>% 
+  # Split into word tokens
+  unnest_tokens(word, text) %>% 
+  # Remove stop words and old timey words
+  anti_join(stop_words) %>% 
+  filter(!word %in% c("thou", "thy", "haue", "thee", 
+                      "thine", "enter", "exeunt", "exit"))
+
+# Join the sentiment dictionary 
+awakening_sentiment <- awakening_clean %>% 
+  inner_join(get_sentiments("bing"))
+awakening_sentiment
+```
+
+```{r}
+awakening_sentiment_plot <- awakening_sentiment %>% 
+  count(title, sentiment)
+
+ggplot(awakening_sentiment_plot, aes(x = sentiment, y = n, fill = title, alpha = sentiment)) +
+  geom_col(position = position_dodge()) +
+  scale_alpha_manual(values = c(0.5, 1))
+```
+
+```{r}
+awakening_split_into_lines <- awakening_sentiment %>% 
+  # Divide lines into groups of 100
+  mutate(line = row_number(),
+         line_chunk = line %/% 100) %>% 
+  # Get a count of postive and negative words in each 100-line chunk.
+  count(title, line_chunk, sentiment) %>% 
+  # Convert the sentiment column into two columns named "positive" and "negative"
+  pivot_wider(names_from = sentiment, values_from = n) %>% 
+  # Calculate net sentiment
+  mutate(sentiment = positive - negative)
+
+ggplot(awakening_split_into_lines,
+       aes(x = line_chunk, y = sentiment, fill = sentiment)) +
+  geom_col() +
+  scale_fill_viridis_c(option = "magma", end = 0.9) +
+  facet_wrap(vars(title), scales = "free_x") +
+  theme_bw()
+```
+I tried to merge both data tables together. However, the challenge is that I am grabbing a part of the collection from the text I don't want. 
+
+```{r}
+DT1_2_full <- merge(awakening_sentiment, usher_sentiment, all = TRUE)         # Full join
+DT1_2_full                                        # Print data.table
+```
+##Conclusions
+
+The Fall of the House of Usher and The Awakening are very different texts yet they have interesting similarities. Kate Chopin incorporates Poe's style in her writing. It is difficult to determine if these are the same words in both texts, however. Because Kate Chopin's work is part of a collection, we need to parse that text we are interested in from the other texts found in the download.I addition, I noticed that I was unable to drawn anything conclusive about the texts except for counts of words and their sentiments. I also believe as a researcher, it behooves me to create my own list of stop words so I have better control over what I want to filter. 
