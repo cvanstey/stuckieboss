@@ -1,5 +1,6 @@
 # stuckieboss
 **Hello Everybody!**
+**Salve a Tutti!**
 
 _About Me_
 My name is Cynthia Anstey. I graduated with a degree in Literature from Stockton University in 2022. I will receive my master’s in American studies from Stockton in December 2024. I am fluent in both Italian and English. As an oral history practitioner and researcher, I hope to connect communities through curation, preservation, and archives. Projects include photo restoration, transcription, translation, interviews, editing, digital archiving, data analysis, and grant writing. 
