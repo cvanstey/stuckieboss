@@ -991,7 +991,7 @@ percentage of different types of teams comprised of 2 to 3 people.</p>
 ##  Max.   :17.40                     
 ## </code></pre>
 <p>Below we have a tibble showing regions with these specific employee
-types. I will join this subset to</p>
+types. I will join this subset to the first subset I created.</p>
 <pre class="r"><code># Returns only records where a joining field finds a match in both tables. 
  joined_data &lt;- inner_join(X1_Musei_2021_emp1, X1_Musei_2021c, by = &quot;regions&quot;, &quot;museo_galleria&quot;)
 print(joined_data)</code></pre>
