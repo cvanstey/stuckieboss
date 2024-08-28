@@ -1,0 +1,287 @@
+---
+title: "Making maps of Italy with R"
+author: "Cynthia Anstey"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+---
+
+
+### dati sorigente
+###### italiano
+Dati sorgente
+<p>I file contenuti in questo archivio sono derivati dai dati di OpenStreetMap e sono distribuiti sotto la Licenza Open Database 1.0. Per maggiori informazioni sul progetto, visita www.openstreetmap.org.</p> <p>Questo file contiene dati di OpenStreetMap aggiornati al 2024-08-23T20:21:17Z. Ogni giorno verrà resa disponibile una nuova versione di questo file al seguente link:</p> <p><a href="http://download.geofabrik.de/europe/italy/centro-latest-free.shp.zip">http://download.geofabrik.de/europe/italy/centro-latest-free.shp.zip</a></p> 
+<p>Una documentazione sui livelli di questo shapefile è disponibile qui:</p> <p><a href="http://download.geofabrik.de/osm-data-in-gis-formats-free.pdf">http://download.geofabrik.de/osm-data-in-gis-formats-free.pdf</a></p> 
+<p>Ci sono 17 file .shp all'interno del file zip scaricato al 27-08-2024. Ho selezionato un file che si chiama "places" e "free", sperando che la struttura fosse adatta per esercitarmi.</p>
+
+### source data
+###### english
+The files in this archive are derived from OpenStreetMap data and are licensed under the Open Database 1.0 License. For more details, visit [OpenStreetMap](www.openstreetmap.org).
+
+- **File link**: [Download Shapefile](http://download.geofabrik.de/europe/italy/centro-latest-free.shp.zip)
+- **Documentation**: [Layer Documentation](http://download.geofabrik.de/osm-data-in-gis-formats-free.pdf)
+
+
+### resources
+<p>Cookbooks that helped the learning process.</p> 
+- [ggplot2 and sf integration](https://r-spatial.org/r/2018/10/25/ggplot2-sf.html)
+- [Shapefile](https://r-graphics.org/recipe-miscgraph-map-shapefile)
+- [advanced mapping](https://bookdown.org/robinlovelace/geocompr/adv-map.html)
+
+
+Install Libraries
+
+```{r}
+library("ggplot2")
+theme_set(theme_bw())
+library("sf")
+```
+
+```{r}
+library("rnaturalearth")
+library("rnaturalearthdata")
+```
+
+
+```{r}
+library(tmap)
+```
+
+
+```{r}
+library(maps)
+library(mapdata)
+library(mapview)
+library(dplyr)
+library(magrittr)
+library(leaflet)
+```
+
+```{r}
+#After importing a file, use st_read to read it into R.
+italy_shp <- st_read("C:\\Users\\Public\\Downloads\\centro-latest-free.shp\\gis_osm_places_free_1.shp")
+```
+
+
+```{r}
+italy_shp1 <- st_read("C:\\Users\\Public\\Downloads\\centro-latest-free.shp\\gis_osm_places_a_free_1.shp")
+```
+
+
+Use ggplot give the file a geometric simple form (sf). italy_shp is plotted first then italy_shp1. 
+```{r}
+ggplot(italy_shp)+
+geom_sf()
+```
+```{r}
+ggplot(italy_shp1)+
+geom_sf()
+```
+The following code layers both spatial plots. The selected file, labeled as "Centro," includes geometric points that indicate locations considered central in Italy.
+
+```{r}
+ggplot() +
+  geom_sf(data = italy_shp, fill = "transparent", color = "lightblue", size = 0.5) +
+  geom_sf(data = italy_shp1, fill = "transparent", color = "darkorange", size = 0.5) +
+  theme_minimal() +
+  labs(title = "Layered Spatial Plots",
+       subtitle = "Overlaying italy_shp and italy_shp1",
+       caption = "Source: Example Data") +
+  theme(legend.position = "bottom")
+```
+
+
+
+Inspect the Data. 
+```{r}
+summary(italy_shp)
+```
+
+Read name as a list.
+```{r}
+names(italy_shp)
+```
+
+Read the file structure.
+```{r}
+str(italy_shp)
+```
+
+Create a Tibble.
+```{r}
+tibble(italy_shp)
+```
+
+Get some basic statistics.
+```{r}
+mean_population <- mean(italy_shp$population)
+median_population <- median(italy_shp$population)
+sd_population <- min(italy_shp$population)
+min_population <- max(italy_shp$population)
+mean_population
+median_population
+sd_population
+min_population
+```
+
+Create a summary of the population column.
+```{r}
+summary(italy_shp$population)
+```
+
+Create bins for population and make a map by pop bins.
+```{r}
+italy_shp_bins <- italy_shp %>%
+  mutate(population_bin = cut(population, breaks = c(0, 1, 500, 1000, 2000, 4000, 8000, 10000, 12000, 15000, 18000, 20000, 22000, 30000, 60000, Inf), 
+                               labels = c("0", "1-500", "500-1000", "1000-2000", "2000-4000", "4000-8000", "8000-10000","10000-12000", "12000-15000","15000-18000", "18000-20000", "20000-22000", "22000-30000", "30000-60000", "60000 +")))
+
+# Count the number of towns in each population bin
+population_bins <- italy_shp_bins %>%
+  count(population_bin)
+
+# Print distribution
+print(population_bins)
+```
+
+Plotting Population Histograms and Bar Charts
+```{r}
+italy_shp_histogram <- italy_shp_bins %>%
+  mutate(population_bin = cut(population,
+                              breaks = c(0, 1000, 5000, 10000, 50000, 80000, 100000, Inf),
+                              labels = c("0-1k", "1k-5k", "5k-10k", "10k-50k", "50k-80k", "80k-100k", "100k+")))
+
+ggplot(italy_shp_histogram, aes(x = population_bin)) +
+  geom_bar(fill = "lightblue", color = "black", width = 0.4) +  # Adjust width here
+  coord_flip() +
+  labs(
+    x = "Population Range",
+    y = "Count",
+    title = "Count of Entities by Population Range"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.title.x = element_text(size = 8, face = "bold"),
+    axis.title.y = element_text(size = 8, face = "bold"),
+    axis.text = element_text(size = 9),
+    plot.title = element_text(size = 9, face = "bold")
+  ) +
+  geom_text(stat = "count", aes(label = ..count..), hjust = -0.2, size = 2.0, color = "black")  # Adjust size here
+options(repr.plot.width=15, repr.plot.height=6)
+```
+
+```{r}
+italy_shp$fclass <- as.character(italy_shp$fclass)
+```
+
+```{r}
+# Check specific columns
+table(italy_shp$fclass)
+```
+
+ 
+Sorting Names.                                                                                                                       
+```{r}
+
+# Sort names
+sorted_names <- sort(italy_shp$name)
+
+# Display the first 10 names
+print(head(sorted_names, 10))
+
+# Or display a random sample of 10 names
+set.seed(123)  # Set seed for reproducibility
+sampled_names <- sample(sorted_names, 10)
+print(sampled_names)
+
+# Or display the first 10 unique names
+unique_names <- unique(italy_shp$name)
+print(head(unique_names, 10))
+```
+Cleaning Names.
+```{r}
+library(stringi)
+italy_shp$name_clean <- italy_shp$name %>%
+# Remove escaped double quotes (\")
+gsub(pattern = "\\\\\"", replacement = "", .) %>%
+# Remove extra double quotes (")
+gsub(pattern = "\"", replacement = "", .) %>%
+# Remove backslashes
+gsub(pattern = "\\\\", replacement = "", .) %>%
+# Remove single quotes
+gsub(pattern = "'", replacement = "", .) %>%
+# Remove accent marks
+stri_trans_general(id = "Latin-ASCII")
+
+# Check the results
+# Sort names
+sorted_names <- sort(italy_shp$name_clean)
+
+# Display the first 50 names
+print(head(sorted_names, 50))
+```
+Additional inspection.
+```{r}
+# Inspect the data
+head(italy_shp$name_clean)
+str(italy_shp$name_clean)
+str(italy_shp$geometry)
+```
+
+```{r}
+# Count occurrences of each name
+duplicates <- italy_shp %>%
+  count(name_clean) %>%
+  filter(n > 1)  # Filter for names that appear more than once
+
+print(duplicates)
+```
+```{r}
+library(mapview)
+mapview(italy_shp)
+```
+
+
+Grouping by fclass and Counting Entities
+
+```{r}
+# Group by 'fclass' and summarize
+df_grouped <- italy_shp %>%
+  group_by(fclass) %>%
+  summarise(
+    count = n(),  # Count of entities in each fclass
+    # Combine all names into a single string per group
+    entities = paste(name_clean, collapse = ", "),
+    # Combine all geometries into a single geometry per group
+    geometry = st_union(geometry),
+    .groups = 'drop'  # Drop the grouping structure in the result
+  )
+
+# Print the grouped summary
+print(df_grouped)
+```
+```{r}
+# Convert df_grouped to an sf object
+italy_shp<- st_as_sf(italy_shp)
+```
+
+
+```{r}
+# Plot using mapview
+mapview(italy_shp, zcol = "fclass", legend = TRUE, map.types = "OpenStreetMap")
+```
+
+
+```{r}
+top_cities <- italy_shp %>%
+  
+  arrange(desc(population)) %>%
+  slice_head(n = 10)
+top_cities <- top_cities %>%
+  mutate(log_population = log1p(population))  # log1p is used to handle zero and small values gracefully
+# Plot using mapview
+mapview(top_cities, zcol = "population", legend = FALSE, map.types = "OpenStreetMap")
+```
+```{r}
+library(xaringan)
+```
+
