@@ -1,9 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<p lang="en">...</p>
+<p lang="it">...</p>
+
   <title>About Me – Cynthia Anstey</title>
-  assets/css/main.css
+  <link rel="stylesheet" href="assets/css/main.css">
+
 </head>
 <body>
   <header>
@@ -19,12 +23,12 @@
       <li>🐍 Python (Photo Enhancement, Text Extraction)</li>
       <li>📊 R (Text Analysis, Data Visualization)</li>
     </ul>
-    <p>https://cvanstey.github.io/stuckieboss/Visit Portfolio</a></p>
+<p><a href="https://cvanstey.github.io/stuckieboss/" target="_blank">Visit Portfolio</a></p>
   </section>
 
   <section>
     <h3>About Me</h3>
-    <p>My name is Cynthia Anstey. I graduated with a degree in Literature from Stockton University in 2022. I will receive my master’s in American Studies from Stockton in December 2024. I am fluent in both Italian and English. As an oral history practitioner and researcher, I hope to connect communities through curation, preservation, and archives.</p>
+    <p>My name is Cynthia Anstey. I graduated with a degree in Literature from Stockton University in 2022. I received my master of arts in American Studies from Stockton in December 2024. Currently, I am completing Stockton's Data Science and Analytics master's program. I am fluent in both Italian and English. As an oral history practitioner and researcher, I hope to connect communities through curation, preservation, and archives.</p>
     <p>Mi chiamo Cynthia (Cinzia) Anstey. Mi sono laureata in Lettere presso la Stockton University nel 2022. Riceverò il mio master in studi americani nel dicembre 2024. Parlo correntemente sia l'italiano che l'inglese. Come ricercatrice di storia orale, spero di collegare le comunità attraverso la curatela, la conservazione e gli archivi.</p>
   </section>
 
